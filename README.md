@@ -110,7 +110,7 @@ After completing the setup:
     ```bash
     cd edge_agent
     .venv/Scripts/activate # On Windows
-    # source .venv/bin/activate # On macOS/Linux
+    # source .venv/bin/activate # On macOS/Linux    
     python main.py
     ```
     This will start the edge agent, which will attempt to connect to a video source (defaulting to webcam 0) and send incident reports to the backend. Ensure the backend is running.

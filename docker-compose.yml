@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./backend/test.db:/app/backend/test.db # Mount the sqlite db file
+    environment:
+      - SQLALCHEMY_DATABASE_URL=sqlite:///./test.db # Use SQLite
+    command: uvicorn src.overwatch_backend.main:app --host 0.0.0.0 --port 8000 --reload
+
+  ai_engine:
+    build:
+      context: ./ai_engine
+      dockerfile: Dockerfile
+    volumes:
+      - ./ai_engine:/app/ai_engine
+      - ./ai_engine/runs:/app/ai_engine/runs # Mount runs directory for models/results
+      - ./yolov8n.pt:/app/ai_engine/yolov8n.pt # Mount the pretrained model
+      - ./ai_engine/data:/app/ai_engine/data # Mount data for datasets
+    command: python -m http.server 8080 # A placeholder command to keep container running if not used for specific task
+
+  web_dashboard:
+    build:
+      context: ./web_dashboard
+      dockerfile: Dockerfile
+      # Removed args section for NEXT_PUBLIC_BACKEND_URL
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=http://backend:8000 # Set for runtime
+    depends_on:
+      - backend
+    command: npm run start # Start in production mode
+
+  edge_agent:
+    build:
+      context: ./edge_agent
+      dockerfile: Dockerfile
+    environment:
+      - BACKEND_URL=http://backend:8000 # Point to the backend service
+      - MODEL_PATH=/app/ai_engine/yolov8n.pt # Use the mounted model in ai_engine
+      - EDGE_AGENT_USERNAME=edge_user
+      - EDGE_AGENT_PASSWORD=edge_password
+      # - VIDEO_SOURCE=0 # Placeholder: 0 for webcam, or path to video file, or RTSP stream URL
+      # - CAMERA_LATITUDE=1.2921
+      # - CAMERA_LONGITUDE=36.8219
+    depends_on:
+      - backend
+      - ai_engine # Edge agent might use ai_engine for models
+    volumes:
+      - ./edge_agent:/app/edge_agent
+      - ./yolov8n.pt:/app/ai_engine/yolov8n.pt # Mount the pretrained model for edge agent
+    # command: python main.py # Command to run the edge agent
